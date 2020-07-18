@@ -1,0 +1,7 @@
+*.log
+.vscode
+username.json
+*.png
+capcha_data/*.*
+image/*.*
+user-credential.json
