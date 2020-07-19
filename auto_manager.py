@@ -48,7 +48,7 @@ class ChromeDriverManager():
 
 
 class AutoManager():
-    def __init__(self, logger, address, local_config_file_path, capcha_try_limit=30):
+    def __init__(self, logger, address, local_config_file_path, capcha_try_limit=6):
         self.logger, self.capcha_try_limit = logger, capcha_try_limit
         self.driver, self.wait = self.get_chrome_driver(address)
         self.driver_manager = ChromeDriverManager(
@@ -90,14 +90,14 @@ class AutoManager():
         try:
             self.logger.info("started to login")
             # 1. fill in username
-            self.logger.debug(f'start fill in username: f{self.username}')
+            self.logger.debug(f'start fill in username: {self.username}')
             login_btn_element = self.wait.until(
                 ec.presence_of_element_located((By.XPATH, "//em[text()='登录']")))
             usr_name_element = self.driver_manager.driver.find_element_by_css_selector(
                 "input[id='ls_username']")
             usr_name_element.send_keys(self.username)
             # 2. fill in password
-            self.logger.debug(f'start to fill in password: f{self.password}')
+            self.logger.debug(f'start to fill in password: {self.password}')
             pwd_element = self.driver_manager.driver.find_element_by_css_selector(
                 "input[id='ls_password']")
             pwd_element.send_keys(self.password)
@@ -131,8 +131,10 @@ class AutoManager():
             click_form_body_items()
 
             # 4. change capcha
-            self.driver_manager.find_and_click_by_xpath("//a[text()='换一个']")
-            sleep(3)
+            self.driver_manager.find_and_click_by_xpath(
+                '//*[contains(text(), "换一个")]')
+
+            sleep(5)
 
             # 2. get result
             result_str = self.driver_manager.get_cracked_string_by_xpath(
@@ -236,8 +238,11 @@ class AutoManager():
             options, right_answers = get_options_and_answers()
             click_right_option(options, right_answers)
             # 1. change capcha
+            # self.driver_manager.find_and_click_by_xpath(
+            #     '//*[@id="myform"]/div[6]/table/tbody/tr/td/a')
+            # * NOTE: if option is not 4 but 3 then the following xpath won't work
             self.driver_manager.find_and_click_by_xpath(
-                '//*[@id="myform"]/div[6]/table/tbody/tr/td/a')
+                "//*[contains(text(), '换一个')]")
             sleep(3)
             # 2. get result
             result_str = self.driver_manager.get_cracked_string_by_xpath(
@@ -247,17 +252,9 @@ class AutoManager():
                 '//*[@id="seccodeverify_SA00"]').send_keys(result_str)
             # 4. click submit
             self.driver_manager.find_and_click_by_xpath(
-                '//*[@id="myform"]/div[7]/center/button/strong')
-
-        for i in range(self.capcha_try_limit):
-            self.logger.debug(f'start: ({i}) attamptation on cracking captcha')
-            try:
-                crack()
-                sleep(5)
-            except selexception.TimeoutException as e:
-                self.logger.debug(
-                    'Daily award should now be done(no required element detected)')
-                break
+                "//*[contains(text(), '提交答案')]")
+            # self.driver_manager.find_and_click_by_xpath(
+            #     '//*[@id="myform"]/div[7]/center/button/strong')
 
         for i in range(self.capcha_try_limit):
             self.logger.debug(f'start: ({i}) attamptation on cracking captcha')

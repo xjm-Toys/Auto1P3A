@@ -35,7 +35,7 @@ Hit **Deploy App** and wait until the build is finished. Click `Manage App` redi
 
 ### All set
 
-Now your Heroku app will follow the schedule you just set and execute the script that gets all daily reward!
+Now your Heroku app will follow the schedule you just set and execute the script that gets all daily rewards!
 
 ## Manually run the script(optional)
 

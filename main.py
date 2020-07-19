@@ -34,7 +34,7 @@ def main():
             "Failed to login, may caused by incorrect username and password")
     except selexception.NoSuchElementException:
         logger.info(f"No such element -- Already got daily award?")
-        task2status['daily_award'] = True
+        task2status['daily_question'] = True
     except Exception:
         logger.debug("Unexpected exception")
     finally:
