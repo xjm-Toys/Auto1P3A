@@ -44,8 +44,31 @@ class TestAutoManager(unittest.TestCase):
                 print(self.auto_manager.query_question_bank(q))
             except KeyError:
                 print(f"question: {q} not in question bank!")
-#
+
+    def test_answer_daily_question(self):
+        self.auto_manager.login_1p3a()
+        self.auto_manager.get_1p3a_daily_question()
+
+    def test_is_daily_award_success(self):
+        self.auto_manager.login_1p3a()
+        res = self.auto_manager.is_daily_award_success()
+        print("res", res)
+
+    def test_is_logged_in(self):
+        res = self.auto_manager.is_logged_in_success()
+        self.assertFalse(res)
+
+        self.auto_manager.login_1p3a()
+
+        res = self.auto_manager.is_logged_in_success()
+        self.assertTrue(res)
+
+    def test_is_daily_question_success(self):
+        self.auto_manager.login_1p3a()
+        res = self.auto_manager.is_daily_question_success()
+        print("res", res)
 
 
 if __name__ == '__main__':
+
     unittest.main()

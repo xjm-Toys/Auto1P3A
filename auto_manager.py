@@ -27,9 +27,13 @@ class ChromeDriverManager():
 
     def get_cracked_string_by_xpath(self, xpath):
         self.logger.debug(f"start to capture capcha image")
-        CAPTCHA_IMG_PATH = f"capcha_data/capcha_{datetime.now().strftime('%m-%d %H:%M:%S')}.png"
-        Path(CAPTCHA_IMG_PATH).parent.mkdir(parents=True, exist_ok=True)
-        captcha_img_element = self.driver.find_element_by_xpath(xpath)
+        CAPTCHA_IMG_PATH = f"capcha_{datetime.now().strftime('%m-%d %H:%M:%S')}.png"
+        # CAPTCHA_IMG_PATH = f"capcha_data/capcha_{datetime.now().strftime('%m-%d %H:%M:%S')}.png"
+        # Path(CAPTCHA_IMG_PATH).parent.mkdir(parents=True, exist_ok=True)
+        sleep(2)
+        captcha_img_element = self.wait.until(
+            ec.visibility_of_element_located((By.XPATH, xpath)))
+        self.logger.debug(f"captcha_img_element: {captcha_img_element}")
         with open(CAPTCHA_IMG_PATH, "wb") as f:
             f.write(captcha_img_element.screenshot_as_png)
         self.logger.debug(f"start to convert capcha to string")
@@ -40,7 +44,7 @@ class ChromeDriverManager():
     def find_and_click_by_xpath(self, xpath):
         try:
             element = self.wait.until(
-                ec.presence_of_element_located((By.XPATH, xpath)))
+                ec.visibility_of_element_located((By.XPATH, xpath)))
             # element = self.driver.find_element_by_xpath(xpath)
             self.driver.execute_script("arguments[0].click();", element)
         except:
@@ -65,6 +69,10 @@ class AutoManager():
         caps["pageLoadStrategy"] = "none"
         chrome_driver = Chrome(desired_capabilities=caps)
         chrome_driver.get(address)
+        # (https://stackoverflow.com/questions/28111539/can-we-zoom-the-browser-window-in-python-selenium-webdriver)
+        chrome_driver.get("chrome://settings/")
+        chrome_driver.execute_script(
+            "chrome.settingsPrivate.setDefaultZoom(0.4);")
         chrome_driver.maximize_window()
         webdriver_wait = WebDriverWait(chrome_driver, 3)
         return chrome_driver, webdriver_wait
@@ -88,79 +96,138 @@ class AutoManager():
 
     def login_1p3a(self):
         try:
+            self.driver_manager.driver.get('https://www.1point3acres.com/bbs/')
             self.logger.info("started to login")
-            # 1. fill in username
+            # * fill in username & password
             self.logger.debug(f'start fill in username: {self.username}')
-            login_btn_element = self.wait.until(
-                ec.presence_of_element_located((By.XPATH, "//em[text()='登录']")))
-            usr_name_element = self.driver_manager.driver.find_element_by_css_selector(
-                "input[id='ls_username']")
-            usr_name_element.send_keys(self.username)
-            # 2. fill in password
+            self.wait.until(ec.visibility_of_element_located(
+                (By.XPATH, '//*[@id="ls_username"]'))).send_keys(self.username)
+            # self.driver_manager.driver.find_element_by_css_selector(
+            #     )
             self.logger.debug(f'start to fill in password: {self.password}')
-            pwd_element = self.driver_manager.driver.find_element_by_css_selector(
-                "input[id='ls_password']")
-            pwd_element.send_keys(self.password)
-            # 3. click login btn
-            login_btn_element.click()
-            # 4. check if login success
+            self.wait.until(ec.visibility_of_element_located(
+                (By.XPATH, '//*[@id="ls_password"]'))).send_keys(self.password)
+            # * click login and wait until page loaded
+            self.driver_manager.find_and_click_by_xpath("//em[text()='登录']")
+            # FIXME: figure why after remove `sleep`, then wait.until not working below
+            sleep(2)
             self.wait.until(ec.presence_of_element_located(
                 (By.XPATH, '//a[text()="退出"]')))
         except selexception.TimeoutException as e:
             self.logger.debug(
-                'Daily award should now be done(no required element detected)')
+                'Daily award should now be done?(no required element detected)')
         self.logger.info("Login success!")
+
+    def is_logged_in_success(self):
+        self.logger.debug(f'start to go to main page')
+        self.driver_manager.driver.get('https://www.1point3acres.com/bbs/')
+        sleep(3)
+        try:
+            self.logger.debug(f'try to find 退出')
+            self.driver.find_element_by_xpath(
+                "//*[contains(text(), '退出')]")
+            self.logger.debug(f'element: 退出 found, meaning is logged in')
+            self.driver.back()
+            return True
+        except selexception.NoSuchElementException:
+            self.logger.debug(f'element: 退出 found, meaning is not logged in')
+            self.driver.back()
+            return False
+
+    def is_daily_award_success(self):
+        self.logger.debug(f'start to go to daily award page')
+        self.driver_manager.driver.get(
+            'https://www.1point3acres.com/bbs/plugin.php?id=dsu_paulsign:sign')
+        sleep(3)
+        try:
+            self.logger.debug(f'try to find "您今天已经签到过了或者签到时间还未开始"')
+            self.driver.find_element_by_xpath(
+                "//*[contains(text(), '您今天已经签到过了或者签到时间还未开始')]")
+            self.logger.debug(
+                f'element:您今天已经签到过了或者签到时间还未开始 found, meaning daily award is gotten')
+            self.driver.back()
+            return True
+        except selexception.NoSuchElementException:
+            self.logger.debug(
+                f'element:您今天已经签到过了或者签到时间还未开始 not found, meaning daily award is not gotten')
+            self.driver.back()
+            return False
+
+    def is_daily_question_success(self):
+        self.logger.debug(f'start to go to main page')
+        self.driver_manager.driver.get(
+            'https://www.1point3acres.com/bbs/')
+        # TODO: better way?
+        sleep(3)
+        try:
+            self.logger.debug(f'try to click and reveal question ')
+            self.driver_manager.find_and_click_by_xpath(
+                '//*[@id="um"]/p[3]/a[1]/img')
+            # TODO: better way?
+            sleep(3)
+            self.logger.debug(f'try to find "提交答案"')
+            self.driver.find_element_by_xpath("//*[contains(text(), '提交答案')]")
+            self.logger.debug(
+                f'element:提交答案 found, meaning daily question is completed')
+            self.driver.back()
+            return False
+        except selexception.NoSuchElementException:
+            self.logger.debug(
+                f'element:提交答案 not found, meaning daily question is not completed')
+            self.driver.back()
+            return True
+
+    def is_logged_in_success(self):
+        self.driver_manager.driver.get('https://www.1point3acres.com/bbs/')
+        sleep(3)
+        try:
+            self.driver.find_element_by_xpath(
+                "//*[contains(text(), '退出')]")
+            self.driver.back()
+            return True
+        except selexception.NoSuchElementException:
+            self.driver.back()
+            return False
+
+    def crack_daily_award(self):
+        # * click form items: “开心” and  “快速留言”
+        self.logger.debug("start to go to 签到领奖 page")
+        self.driver_manager.driver.get(
+            'https://www.1point3acres.com/bbs/plugin.php?id=dsu_paulsign:sign')
+        sleep(5)
+        self.logger.debug("start to select 心情")
+        self.driver_manager.find_and_click_by_xpath(
+            '//*[@id="kx"]/center/img')
+        self.logger.debug("start to click 选择快速留言")
+        self.driver_manager.find_and_click_by_xpath(
+            "//*[contains(text(), '快速选择')]")  # change capcha
+        # * crack captcha and click submit
+        self.logger.debug("start to crack captcha and click submit")
+        # 4. change capcha
+        self.logger.debug("start to select 换一个")
+        self.driver_manager.find_and_click_by_xpath(
+            '//*[contains(text(), "换一个")]')
+        sleep(4)
+        # 2. get result
+        result_str = self.driver_manager.get_cracked_string_by_xpath(
+            '//*[@id="seccode_S00"]/img')
+
+        # 3. fill in result and click submit
+        self.logger.debug("start to fill in result")
+        self.driver.find_element_by_xpath(
+            '//*[@id="seccodeverify_S00"]').send_keys(result_str)
+        self.logger.debug("start to click submit")
+        self.driver_manager.find_and_click_by_xpath(
+            '//*[@id="ct"]/div[1]/div[1]/form/table[4]/tbody/tr/td/div/input')
 
     def get_1p3a_daily_award(self):
         # NOTE: use chrome to find element by xpath: `$x('PATH')`
         self.logger.info("start to get daily award")
 
-        # 1. click "签到领奖"
-        try:
-            self.logger.debug("start to click 签到领奖")
-            self.driver_manager.find_and_click_by_xpath(
-                "//font[text()='签到领奖!']")
-        except selexception.TimeoutException as e:
-            self.logger.info(
-                'Should already got daily award (no daily award button detected)')
-            # * already done
-            return
-
-        def crack():
-            # 2. click to select “开心” and  “快速留言”
-            click_form_body_items()
-
-            # 4. change capcha
-            self.driver_manager.find_and_click_by_xpath(
-                '//*[contains(text(), "换一个")]')
-
-            sleep(5)
-
-            # 2. get result
-            result_str = self.driver_manager.get_cracked_string_by_xpath(
-                '//*[@id="seccode_S00"]/img')
-
-            # 3. fill in result and click submit
-            self.driver.find_element_by_xpath(
-                '//*[@id="seccodeverify_S00"]').send_keys(result_str)
-            self.driver_manager.find_and_click_by_xpath(
-                '//*[@id="ct"]/div[1]/div[1]/form/table[4]/tbody/tr/td/div/input')
-
-        def click_form_body_items():
-            # 2. click to select “开心” and  “快速留言”
-            self.logger.debug("start to select 心情")
-            self.driver_manager.find_and_click_by_xpath(
-                '//*[@id="kx"]/center/img')
-            self.logger.debug("start to click 选择快速留言")
-            self.driver_manager.find_and_click_by_xpath(
-                '//*[@id="ct"]/div[1]/div[1]/form/table[2]/tbody/tr[1]/td/label[2]')
-            # * crack captcha and click submit
-            self.logger.debug("start to crack captcha and click submit")
-
         for i in range(self.capcha_try_limit):
             self.logger.debug(f'start: ({i}) attamptation on cracking captcha')
             try:
-                crack()
+                self.crack_daily_award()
                 sleep(5)
             except selexception.TimeoutException as e:
                 self.logger.debug(
@@ -168,7 +235,7 @@ class AutoManager():
                 break
 
         # 等待签到框消失
-        # wait.until(ec.invisibility_of_element_located((By.XPATH, "//div[@id='fwin_dsu_paulsign']")))
+        # self.wait.until(ec.invisibility_of_element_located((By.XPATH, "//div[@id='fwin_dsu_paulsign']")))
 
         # 等待 “签到领奖！” 链接消失
         # wait.until(ec.invisibility_of_element_located((By.XPATH, "//font[text()='签到领奖!']")))
@@ -182,150 +249,79 @@ class AutoManager():
     def get_1p3a_daily_question(self):
         self.logger.debug("start to get daily question")
 
-        # 1. click to reveal question
         def reveal_question():
             self.driver_manager.find_and_click_by_xpath(
                 '//*[@id="um"]/p[3]/a[1]/img')
-            sleep(5)
+            # sleep(5)
 
-        def get_options_and_answers():
-            question_body = self.driver.find_element_by_xpath(
-                '//*[@id="myform"]/div[1]/span').text[5:]
+        def get_right_option():
+            # * query for right answers
+            # question_body = self.driver.find_element_by_xpath(
+            #     '//*[@id="myform"]/div[1]/span').text[5:]
+            question_body = self.wait.until(
+                ec.presence_of_element_located((By.XPATH, '//*[@id="myform"]/div[1]/span'))).text[5:]
             try:
                 right_answers = self.query_question_bank(question_body)
             except KeyError:
                 self.logger.error(
                     f"{question_body} not found in question bank")
                 raise
+            # * get available options
             options = [element.text.strip(
             ) for element in self.driver.find_elements_by_xpath("//div[@class='qs_option']")]
             self.logger.debug(f'options: {options}, answers: {right_answers}')
-            return options, right_answers
-
-        # try:
-        #     options, right_answers = get_options_and_answers()
-        # except KeyError:
-        #     # * question not found in question bank
-        #     return
-
-        def click_right_option(options, right_answers):
             # python note(https://stackoverflow.com/questions/9979970/why-does-python-use-else-after-for-and-while-loops)
-            for i, option in enumerate(options):
+            # * find right option
+            for option in options:
                 if option in right_answers:
-                    choose_btn = self.driver.find_element_by_xpath(
-                        f'//*[@id="myform"]/div[{i+2}]')
-                    choose_btn.click()
-                    break
+                    return option
             else:
                 self.logger.error(
                     f'no option found in answer list, options: {options}, right_answers:{right_answers}')
                 raise ValueError
 
+        def crack_daily_question():
+            # 1. reveal question
+            reveal_question()
+
+            # 2. click right option
+            self.driver_manager.find_and_click_by_xpath(
+                f'//*[contains(text(), "{right_option}")]')
+
+            # sleep(3)
+            # 3. get captcha result
+            self.driver_manager.find_and_click_by_xpath(
+                "//*[contains(text(), '换一个')]")  # change capcha
+            sleep(4)
+            result_str = self.driver_manager.get_cracked_string_by_xpath(
+                '//*[@id="seccode_SA00"]/img')
+            # 4. fill in result
+            self.driver.find_element_by_xpath(
+                '//*[@id="seccodeverify_SA00"]').send_keys(result_str)
+            # 5. click submit
+            self.driver_manager.find_and_click_by_xpath(
+                "//*[contains(text(), '提交答案')]")
+
         reveal_question()
         try:
-            options, right_answers = get_options_and_answers()
-            click_right_option(options, right_answers)
-        except KeyError:
+            right_option = get_right_option()
+        except KeyError as e:
             # * question not found in question bank
             return
         except ValueError:
             # * option not found in right_answers
             return
-
-        def crack():
-            # reveal and answer question
-            reveal_question()
-            options, right_answers = get_options_and_answers()
-            click_right_option(options, right_answers)
-            # 1. change capcha
-            # self.driver_manager.find_and_click_by_xpath(
-            #     '//*[@id="myform"]/div[6]/table/tbody/tr/td/a')
-            # * NOTE: if option is not 4 but 3 then the following xpath won't work
-            self.driver_manager.find_and_click_by_xpath(
-                "//*[contains(text(), '换一个')]")
-            sleep(3)
-            # 2. get result
-            result_str = self.driver_manager.get_cracked_string_by_xpath(
-                '//*[@id="seccode_SA00"]/img')
-            # 3. fill in result
-            self.driver.find_element_by_xpath(
-                '//*[@id="seccodeverify_SA00"]').send_keys(result_str)
-            # 4. click submit
-            self.driver_manager.find_and_click_by_xpath(
-                "//*[contains(text(), '提交答案')]")
-            # self.driver_manager.find_and_click_by_xpath(
-            #     '//*[@id="myform"]/div[7]/center/button/strong')
-
         for i in range(self.capcha_try_limit):
             self.logger.debug(f'start: ({i}) attamptation on cracking captcha')
             try:
-                crack()
-                sleep(5)
+                crack_daily_question()
+                # sleep(5)
             except selexception.TimeoutException as option:
                 self.logger.debug(
                     'Daily award should now be done(no required element detected)')
-                break
-        # try:
-        #     self.driver.find_element_by_xpath(
-        #         "//img[@src='source/plugin/ahome_dayquestion/images/end.gif']")
-        #     self.logger.debug("今天已经回答过啦！!")
-        #     return
-        # except selexception.NoSuchElementException:
-        #     pass
-
-        # 等待 “开始答题” 或者 ”答题中“ 图标
-        two_icons = "img[src='source/plugin/ahome_dayquestion/images/ing.gif'], img[src='source/plugin/ahome_dayquestion/images/start.gif']"
-        # daily_q_element = wait.until(ec.visibility_of_element_located((By.CSS_SELECTOR, two_icons)))
-        sleep(4)
-        daily_q_element = self.driver.find_element_by_css_selector(
-            two_icons)
-
-        # 每日答题
-        self.driver.execute_script(
-            "arguments[0].click();", daily_q_element)
-        # daily_q_element.click()
-
-        # 填写验证码
-        fill_captcha(self.driver, wait)
-
-        # 获取问题和答案
-        question = self.driver.find_element_by_xpath(
-            "//b[text()='【题目】']/..").text[5:]
-        answer = self.query_question_bank(question)
-
-        if answer == "":
-            self.logger.debug("今日问题未被收录入题库，跳过每日问答")
-            return
-        elif type(answer) is list:
-            answer_set = set(answer)
-        else:
-            answer_set = set([answer])
-
-        # 提交答案
-
-        answer = "this make no sense"
-
-        option_list = self.driver.find_elements_by_xpath(
-            "//div[@class='qs_option']")
-
-        for option in option_list:
-            potential_ans = option.text.strip()
-            if potential_ans in answer_set:
-                answer = potential_ans
-                choose_btn = self.driver.find_element_by_xpath(
-                    f"//div[text()='  {answer}']/input")
-                choose_btn.click()
-
-        if answer == "this make no sense":
-            self.logger.debug("题库答案过期，跳过每日问答！")
-            return
-        else:
-            self.logger.debug(f"答案: {answer}")
-
-        ans_btn = self.driver.find_element_by_xpath(
-            "//button[@name='submit'][@type='submit']")
-        self.driver.execute_script("arguments[0].click();", ans_btn)
-        self.logger.debug("完成每日问答，大米+1")
+                # FIXME: dev only
+                pass
+                # break
 
     def find_and_click_by_xpath(driver, wait, xpath):
         element = wait.until(

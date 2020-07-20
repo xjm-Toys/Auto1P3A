@@ -1,3 +1,4 @@
+import selenium.webdriver as webdriver
 from config import CONFIG_INFO
 from loguru import logger
 from auto_manager import AutoManager
@@ -13,7 +14,7 @@ BBS_ADDRESS, LOCAL_USER_CONFIG_FILE_PATH = [
     CONFIG_INFO[k] for k in ('BBS_ADDRESS', 'LOCAL_USER_CONFIG_FILE_PATH')]
 
 
-# @ logger.catch
+@logger.catch
 def main():
     task2status = {task: False for task in [
         "login", "daily_award", "daily_question"]}
@@ -21,29 +22,35 @@ def main():
         logger, BBS_ADDRESS, LOCAL_USER_CONFIG_FILE_PATH)
     try:
         auto_manager.login_1p3a()
-        task2status['login'] = True
-
         auto_manager.get_1p3a_daily_award()
-        task2status['daily_award'] = True
-
         auto_manager.get_1p3a_daily_question()
-        task2status["daily_question"] = True
 
-    except selexception.TimeoutException:
-        logger.error(
-            "Failed to login, may caused by incorrect username and password")
+    except selexception.TimeoutException as e:
+        logger.exception(e)
     except selexception.NoSuchElementException:
-        logger.info(f"No such element -- Already got daily award?")
+        logger.exception(f"No such element -- Already got daily award?")
         task2status['daily_question'] = True
-    except Exception:
-        logger.debug("Unexpected exception")
+    except Exception as e:
+        logger.exception(e)
     finally:
-        info = "\t".join(
-            f"{task} {'succeeded' if status else 'failed'}" for task, status in task2status.items())
-        logger.info(info)
-        auto_manager.driver.quit()
-        exit(0)
+        try:
+            logger.debug(f'start to check login status')
+            task2status['login'] = auto_manager.is_logged_in_success()
+            logger.debug(f'start to check daily award status')
+            task2status['daily_award'] = auto_manager.is_daily_award_success()
+            logger.debug(f'start to check daily question status')
+            task2status["daily_question"] = auto_manager.is_daily_question_success()
+            info = "\t".join(
+                f"{task} {'success' if status else 'failed'}" for task, status in task2status.items())
+            logger.info(info)
+            auto_manager.driver.quit()
+            exit(0)
+        except Exception as e:
+            logger.exception(e)
 
 
 if __name__ == "__main__":
     main()
+
+# xiangjun@ip-10-0-0-126.ec2.internal
+
