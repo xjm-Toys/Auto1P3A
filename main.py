@@ -23,7 +23,8 @@ def main():
     try:
         auto_manager.login_1p3a()
         auto_manager.get_1p3a_daily_award()
-        auto_manager.get_1p3a_daily_question()
+        # FIXME: captcha not captured
+        # auto_manager.get_1p3a_daily_question()
 
     except selexception.TimeoutException as e:
         logger.exception(e)
