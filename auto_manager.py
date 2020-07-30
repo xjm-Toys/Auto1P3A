@@ -33,6 +33,7 @@ class ChromeDriverManager():
         sleep(2)
         captcha_img_element = self.wait.until(
             ec.visibility_of_element_located((By.XPATH, xpath)))
+        captcha_img_element.location_once_scrolled_into_view
         self.logger.debug(f"captcha_img_element: {captcha_img_element}")
         with open(CAPTCHA_IMG_PATH, "wb") as f:
             f.write(captcha_img_element.screenshot_as_png)
@@ -52,7 +53,7 @@ class ChromeDriverManager():
 
 
 class AutoManager():
-    def __init__(self, logger, address, local_config_file_path, capcha_try_limit=6):
+    def __init__(self, logger, address, local_config_file_path, capcha_try_limit=20, capcha_delay=4):
         self.logger, self.capcha_try_limit = logger, capcha_try_limit
         self.driver, self.wait = self.get_chrome_driver(address)
         self.driver_manager = ChromeDriverManager(
@@ -61,6 +62,11 @@ class AutoManager():
             local_config_file_path)
         with open("question_list.json") as f:
             self.question2answer = json.load(f)
+        self.capcha_delay = capcha_delay
+
+    def zoom_page(self):
+        return
+        # self.driver.execute_script("document.body.style.zoom = '10%'")
 
     def get_chrome_driver(self, address):
         # * init webdriver, using chrome
@@ -70,9 +76,9 @@ class AutoManager():
         chrome_driver = Chrome(desired_capabilities=caps)
         chrome_driver.get(address)
         # (https://stackoverflow.com/questions/28111539/can-we-zoom-the-browser-window-in-python-selenium-webdriver)
-        chrome_driver.get("chrome://settings/")
-        chrome_driver.execute_script(
-            "chrome.settingsPrivate.setDefaultZoom(0.4);")
+        # chrome_driver.get("chrome://settings/")
+        # chrome_driver.execute_script(
+        #     "chrome.settingsPrivate.setDefaultZoom(0.4);")
         chrome_driver.maximize_window()
         webdriver_wait = WebDriverWait(chrome_driver, 3)
         return chrome_driver, webdriver_wait
@@ -97,6 +103,7 @@ class AutoManager():
     def login_1p3a(self):
         try:
             self.driver_manager.driver.get('https://www.1point3acres.com/bbs/')
+            self.zoom_page()
             self.logger.info("started to login")
             # * fill in username & password
             self.logger.debug(f'start fill in username: {self.username}')
@@ -121,6 +128,7 @@ class AutoManager():
     def is_logged_in_success(self):
         self.logger.debug(f'start to go to main page')
         self.driver_manager.driver.get('https://www.1point3acres.com/bbs/')
+        self.zoom_page()
         sleep(3)
         try:
             self.logger.debug(f'try to find 退出')
@@ -138,6 +146,7 @@ class AutoManager():
         self.logger.debug(f'start to go to daily award page')
         self.driver_manager.driver.get(
             'https://www.1point3acres.com/bbs/plugin.php?id=dsu_paulsign:sign')
+        self.zoom_page()
         sleep(3)
         try:
             self.logger.debug(f'try to find "您今天已经签到过了或者签到时间还未开始"')
@@ -157,6 +166,7 @@ class AutoManager():
         self.logger.debug(f'start to go to main page')
         self.driver_manager.driver.get(
             'https://www.1point3acres.com/bbs/')
+        self.zoom_page()
         # TODO: better way?
         sleep(3)
         try:
@@ -179,6 +189,7 @@ class AutoManager():
 
     def is_logged_in_success(self):
         self.driver_manager.driver.get('https://www.1point3acres.com/bbs/')
+        self.zoom_page()
         sleep(3)
         try:
             self.driver.find_element_by_xpath(
@@ -194,6 +205,7 @@ class AutoManager():
         self.logger.debug("start to go to 签到领奖 page")
         self.driver_manager.driver.get(
             'https://www.1point3acres.com/bbs/plugin.php?id=dsu_paulsign:sign')
+        self.zoom_page()
         sleep(5)
         self.logger.debug("start to select 心情")
         self.driver_manager.find_and_click_by_xpath(
@@ -207,7 +219,7 @@ class AutoManager():
         self.logger.debug("start to select 换一个")
         self.driver_manager.find_and_click_by_xpath(
             '//*[contains(text(), "换一个")]')
-        sleep(4)
+        sleep(self.capcha_delay)
         # 2. get result
         result_str = self.driver_manager.get_cracked_string_by_xpath(
             '//*[@id="seccode_S00"]/img')

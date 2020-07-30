@@ -2,7 +2,7 @@
 
 ## Summary
 
-An automated script to get the daily reward in 1point3auto (一亩三分地), utilizing pytesseract to crack the captcha, deployed on Heroku
+An automated script to get not only daily rewards but also able to answer daily questions in 1point3auto (一亩三分地). Pytesseract is used to crack the captcha, and Heroku is used for auto deployment.
 
 ## Deployment
 
@@ -37,7 +37,7 @@ Hit **Deploy App** and wait until the build is finished. Click `Manage App` redi
 
 Now your Heroku app will follow the schedule you just set and execute the script that gets all daily rewards!
 
-## Manually run the script(optional)
+## (Optional) Manually run the script
 
 ### First way: using Heroku console
 
@@ -54,6 +54,11 @@ Now your Heroku app will follow the schedule you just set and execute the script
 Heroku login
 Heroku run main --app <YOUR_APP_NAME>
 ```
+
+## TODO
+
+- [ ] Fix unable to crack captcha for daily questions(should be zooming issus)
+- [ ] Add total awards information display support
 
 ## Credit
 

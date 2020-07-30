@@ -51,6 +51,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-# xiangjun@ip-10-0-0-126.ec2.internal
-

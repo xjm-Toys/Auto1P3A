@@ -7,4 +7,4 @@ image/*.*
 user-credential.json
 
 *.todo
-__pycache__/*.*
+__pycache__
