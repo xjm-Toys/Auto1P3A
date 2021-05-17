@@ -15,8 +15,8 @@ def validation(width, height, x, y, pix):
     diff = same = 0
 
     for dx, dy in direct:
-        nx, ny = x+dx, y+dy
-        if 0 <= nx and nx < width and 0 <= ny and ny < height:
+        nx, ny = x + dx, y + dy
+        if nx >= 0 and nx < width and ny >= 0 and ny < height:
             if pix[x, y] == pix[nx, ny]:
                 same += 1
             else:
@@ -34,9 +34,9 @@ def validation(width, height, x, y, pix):
 
 def refine(char):
     if len(char) > 1:
-        return char[-1]
-    if char == '¥':
-        return 'Y'
+        return char[0]
+    if char == "¥":
+        return "Y"
     else:
         return char
 
@@ -56,7 +56,7 @@ def captcha_to_string(img):
             res_code = validation(width, height, x, y, pix)
             if res_code == 1:
                 for dx, dy in [(1, 0), (0, 1), (-1, 0), (0, -1)]:
-                    nx, ny = x+dx, y+dy
+                    nx, ny = x + dx, y + dy
                     rgb_dict[pix[nx, ny]] += 10
                 rgb_dict[pix[x, y]] += 10
             elif res_code == 3:
@@ -67,7 +67,7 @@ def captcha_to_string(img):
     # show_image(img)
 
     rank = sorted(rgb_dict.items(), key=lambda k_v: k_v[1])
-    color_set = set([colr[0] for colr in rank[-4:]])
+    color_set = {color[0] for color in rank[-4:]}
 
     pix = img.load()
 
@@ -104,44 +104,31 @@ def captcha_to_string(img):
             is_char = False
             right = x + 3
             c_img = img.crop((left, top, right, bottom))
-            c_img = c_img.resize((c_img.size[0]*2, c_img.size[1]*2))
+            c_img = c_img.resize((c_img.size[0] * 2, c_img.size[1] * 2))
             c_img = c_img.filter(ImageFilter.GaussianBlur(radius=1))
 
             # show_image(c_img)
 
-            char = refine(pytesseract.image_to_string(
-                c_img, lang='eng', config='--psm 7'))
+            char = refine(
+                pytesseract.image_to_string(
+                    c_img,
+                    lang="eng",
+                    config=(
+                        # "-c tessedit"
+                        # "tessedit_char_whitelist=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+                        " --psm 10"
+                        # " -l osd"
+                    ),
+                )
+            )
             ans += char
 
     return ans
 
-    # # cut horizontally
-    # new_h, new_w = c_img.size[1], c_img.size[0]
-    # new_left = new_bottom = new_top = 0
-    # new_right = new_w - 1
-    # new_is_char = False
-    # new_is_white = True
-    # new_pix = c_img.load()
-    # for ny in range(new_h):
-    #     for nx in range(new_w):
-    #         if nx == 0:
-    #             new_is_white = True
-    #         elif new_pix[nx, ny] == (0, 0, 0):
-    #             new_is_white = False
 
-    #         if not new_is_white and not new_is_char:
-    #             new_is_char = True
-    #             new_top = ny - 2
+# a = captcha_to_string(Image.open("capcha/05-17 03:56:46.png"))
+# print(a)
 
-    #     if new_is_char and new_is_white:
-    #         new_is_char = False
-    #         new_bottom = ny + 2
-    #         new_c_img = c_img.crop((new_left, new_top, new_right, new_bottom))
-    #         show_image(new_c_img)
+# a = captcha_to_string(Image.open("capcha/05-17 03:56:56.png"))
+# print(a)
 
-    #         new_c_img = new_c_img.resize((new_c_img.size[0]*2, new_c_img.size[1]*2))
-    #         print(pytesseract.image_to_string(new_c_img, lang='eng', config='--psm 7'))
-
-# if __name__ == "__main__":
-
-    # do your test

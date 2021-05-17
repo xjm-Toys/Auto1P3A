@@ -8,3 +8,4 @@ user-credential.json
 
 *.todo
 __pycache__
+local_config.py
